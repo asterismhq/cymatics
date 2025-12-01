@@ -11,7 +11,7 @@ if [ "$#" -gt 0 ]; then
     exec "$@"
 else
     echo "Starting server on 0.0.0.0:8000..."
-    exec uvicorn fapi_tmpl.api.main:app \
+    exec uvicorn cymatics.api.main:app \
         --host "0.0.0.0" \
         --port "8000"
 fi
