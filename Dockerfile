@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1.7-labs
 # ==============================================================================
 # Dockerfile for cymatics - Audio/Video Transcription Service
-# Optimized for ARM64 (Apple Silicon) with CPU-only PyTorch
+# Optimized for CPU-only PyTorch (supports both ARM64 and x86_64)
 # ==============================================================================
 
 # ==============================================================================
 # Stage: base
 # - Python base image with system dependencies and uv
 # ==============================================================================
-FROM --platform=linux/arm64 python:3.12-slim AS base
+FROM python:3.12-slim AS base
 
 WORKDIR /app
 
@@ -32,11 +32,12 @@ FROM base AS dev-deps
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# For ARM64, PyTorch CPU wheels are installed directly without CUDA
+# Install CPU-only PyTorch to avoid CUDA dependencies
 # Set link mode to copy to avoid hardlink issues in Docker
 ENV UV_LINK_MODE=copy
+ENV PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
 RUN --mount=type=cache,target=/root/.cache \
-    uv pip install --system torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
     uv sync
 
 
@@ -46,10 +47,11 @@ RUN --mount=type=cache,target=/root/.cache \
 # ==============================================================================
 FROM base AS prod-deps
 
-# For ARM64, PyTorch CPU wheels are installed directly without CUDA
+# Install CPU-only PyTorch to avoid CUDA dependencies
 ENV UV_LINK_MODE=copy
+ENV PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
 RUN --mount=type=cache,target=/root/.cache \
-    uv pip install --system torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
     uv sync --no-dev
 
 
@@ -57,7 +59,7 @@ RUN --mount=type=cache,target=/root/.cache \
 # Stage: runtime-base
 # - Common runtime setup for development and production
 # ==============================================================================
-FROM --platform=linux/arm64 python:3.12-slim AS runtime-base
+FROM python:3.12-slim AS runtime-base
 
 # System dependencies needed at runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
