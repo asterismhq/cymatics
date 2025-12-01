@@ -32,13 +32,9 @@ FROM base AS dev-deps
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Install CPU-only PyTorch to avoid CUDA dependencies
-# Set link mode to copy to avoid hardlink issues in Docker
-# Use --index-url for uv to get CPU-only torch wheels
+# uv sync uses pyproject.toml [tool.uv] configuration for CPU-only PyTorch
 ENV UV_LINK_MODE=copy
-RUN --mount=type=cache,target=/root/.cache \
-    uv pip install --system --index-url https://download.pytorch.org/whl/cpu torch torchaudio && \
-    uv sync --index-url https://download.pytorch.org/whl/cpu
+RUN --mount=type=cache,target=/root/.cache uv sync
 
 
 # ==============================================================================
@@ -47,11 +43,9 @@ RUN --mount=type=cache,target=/root/.cache \
 # ==============================================================================
 FROM base AS prod-deps
 
-# Install CPU-only PyTorch to avoid CUDA dependencies
+# uv sync uses pyproject.toml [tool.uv] configuration for CPU-only PyTorch
 ENV UV_LINK_MODE=copy
-RUN --mount=type=cache,target=/root/.cache \
-    uv pip install --system --index-url https://download.pytorch.org/whl/cpu torch torchaudio && \
-    uv sync --no-dev --index-url https://download.pytorch.org/whl/cpu
+RUN --mount=type=cache,target=/root/.cache uv sync --no-dev
 
 
 # ==============================================================================
