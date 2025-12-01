@@ -33,8 +33,9 @@ FROM base AS dev-deps
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Install CPU-only PyTorch first for ARM64 compatibility
+# Use --extra-index-url to prefer CPU wheels over CUDA versions
 RUN --mount=type=cache,target=/root/.cache \
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir torch torchaudio --extra-index-url https://download.pytorch.org/whl/cpu && \
     uv sync
 
 
@@ -45,8 +46,9 @@ RUN --mount=type=cache,target=/root/.cache \
 FROM base AS prod-deps
 
 # Install CPU-only PyTorch first for ARM64 compatibility
+# Use --extra-index-url to prefer CPU wheels over CUDA versions
 RUN --mount=type=cache,target=/root/.cache \
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir torch torchaudio --extra-index-url https://download.pytorch.org/whl/cpu && \
     uv sync --no-dev
 
 
