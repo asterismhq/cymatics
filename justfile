@@ -28,7 +28,7 @@ init:
     mkdir -p ~/cymatics/processing
     mkdir -p ~/cymatics/completed
     mkdir -p ~/cymatics/failed
-    mkdir -p ~/cymatics/cache/huggingface
+    mkdir -p ~/cymatics/cache
     @echo "Done. You can now drop files into ~/cymatics/incoming"
 
 # Initialize project: install dependencies and create the .env file

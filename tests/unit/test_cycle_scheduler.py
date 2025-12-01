@@ -1,6 +1,8 @@
 """Unit tests for the cycle scheduler service."""
 
+import os
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
@@ -120,9 +122,6 @@ class TestCycleSchedulerService:
 
     def test_is_file_stable(self, scheduler: CycleSchedulerService, temp_dir: Path):
         """Test file stability check."""
-        import os
-        import time
-
         file_path = temp_dir / "incoming" / "test.mp3"
         file_path.write_bytes(b"audio data")
 

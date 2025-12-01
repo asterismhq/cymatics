@@ -24,18 +24,18 @@ def get_transmutation_service() -> TransmutationServiceProtocol:
 
     settings = get_app_settings()
 
-    if settings.use_mock_transmutation:
-        from dev.mocks.services.mock_transmutation_service import (
-            MockTransmutationService,
-        )
-
-        return MockTransmutationService()
-
     if _transmutation_service is None:
-        _transmutation_service = TransmutationService(
-            model_name=settings.whisper_model,
-            unload_timeout=settings.model_unload_timeout,
-        )
+        if settings.use_mock_transmutation:
+            from dev.mocks.services.mock_transmutation_service import (
+                MockTransmutationService,
+            )
+
+            _transmutation_service = MockTransmutationService()
+        else:
+            _transmutation_service = TransmutationService(
+                model_name=settings.whisper_model,
+                unload_timeout=settings.model_unload_timeout,
+            )
 
     return _transmutation_service
 

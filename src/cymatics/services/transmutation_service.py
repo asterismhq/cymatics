@@ -64,7 +64,7 @@ class TransmutationService(TransmutationServiceProtocol):
             import whisper
 
             # Run model loading in a thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             self._model = await loop.run_in_executor(
                 None,
                 lambda: whisper.load_model(self._model_name, device="cpu"),
@@ -128,7 +128,7 @@ class TransmutationService(TransmutationServiceProtocol):
                 import whisper
 
                 # Run transcription in thread pool
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 result = await loop.run_in_executor(
                     None,
                     lambda: whisper.transcribe(

@@ -3,13 +3,14 @@
 import asyncio
 import logging
 import shutil
+import time
 from collections import deque
 from pathlib import Path
 from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from cymatics.models import ModelState, QueueStatus
+from cymatics.models import QueueStatus
 from cymatics.protocols import CycleSchedulerProtocol, TransmutationServiceProtocol
 from cymatics.services.transmutation_service import TransmutationService
 
@@ -140,11 +141,8 @@ class CycleSchedulerService(CycleSchedulerProtocol):
                 if f.is_file() and f.suffix.lower() in self.SUPPORTED_EXTENSIONS
             )
 
-        # Get model state
-        if isinstance(self._transmutation_service, TransmutationService):
-            model_state = self._transmutation_service.get_state()
-        else:
-            model_state = ModelState.UNLOADED
+        # Get model state from transmutation service
+        model_state = self._transmutation_service.get_state()
 
         return QueueStatus(
             queue_length=queue_length,
@@ -214,8 +212,6 @@ class CycleSchedulerService(CycleSchedulerProtocol):
             mtime = file_path.stat().st_mtime
 
             # Check if file was modified recently
-            import time
-
             if time.time() - mtime < self._debounce_seconds:
                 return False
 

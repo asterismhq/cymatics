@@ -16,13 +16,13 @@ def e2e_network():
 @pytest.fixture(scope="session")
 def api_image():
     # Use the temporary image built for e2e tests
-    return "fapi-tmpl-e2e:latest"
+    return "cymatics:latest"
 
 
 @pytest.fixture(scope="session")
 def api_base_url(api_image, e2e_network):
     env = {
-        "FAPI_TMPL_USE_MOCK_GREETING": "true",
+        "CYMATICS_USE_MOCK_TRANSMUTATION": "true",
     }
     api_wait_strategy = HttpWaitStrategy(8000, "/health").for_status_code(200)
     with (
