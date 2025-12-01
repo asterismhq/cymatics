@@ -1,4 +1,4 @@
-"""Configuration module exposed by the template."""
+"""Configuration module for cymatics."""
 
 from .app_settings import AppSettings, settings
 

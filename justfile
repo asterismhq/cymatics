@@ -1,12 +1,12 @@
 # ==============================================================================
-# justfile for fapi-tmpl automation
+# justfile for cymatics automation
 # ==============================================================================
 
 set dotenv-load
 
-APP_NAME := env("FAPI_TMPL_APP_NAME", "fapi-tmpl")
-HOST_IP := env("FAPI_TMPL_BIND_IP", "127.0.0.1")
-DEV_PORT := env("FAPI_TMPL_DEV_PORT", "8000")
+APP_NAME := env("CYMATICS_APP_NAME", "cymatics")
+HOST_IP := env("CYMATICS_BIND_IP", "127.0.0.1")
+DEV_PORT := env("CYMATICS_DEV_PORT", "8000")
 
 # default target
 default: help
@@ -20,6 +20,16 @@ help:
 # ==============================================================================
 # Environment Setup
 # ==============================================================================
+
+# Initialize cymatics data directories on localhost
+init:
+    @echo "Initializing cymatics data directories at ~/cymatics..."
+    mkdir -p ~/cymatics/incoming
+    mkdir -p ~/cymatics/processing
+    mkdir -p ~/cymatics/completed
+    mkdir -p ~/cymatics/failed
+    mkdir -p ~/cymatics/cache
+    @echo "Done. You can now drop files into ~/cymatics/incoming"
 
 # Initialize project: install dependencies and create the .env file
 setup:
@@ -41,7 +51,7 @@ setup:
 # Run local development server
 dev:
     @echo "Starting local development server..."
-    @uv run uvicorn fapi_tmpl.api.main:app --reload --host {{HOST_IP}} --port {{DEV_PORT}}
+    @uv run uvicorn cymatics.api.main:app --reload --host {{HOST_IP}} --port {{DEV_PORT}}
 
 # Start production-like environment with Docker Compose
 up:
@@ -67,7 +77,7 @@ fix:
 
 # Run static checks (Ruff, Mypy)
 check:
-    @echo "🧐 Running static checks..."
+    @echo "🔍 Running static checks..."
     @uv run ruff format --check .
     @uv run ruff check .
     @uv run mypy .
@@ -115,11 +125,11 @@ build-test:
 # Run e2e tests
 e2e-test:
     @echo "🚀 Building temporary image for e2e tests..."
-    @docker build --target development -t fapi-tmpl-e2e:latest .
+    @docker build --target development -t cymatics-e2e:latest .
     @echo "🚀 Running e2e tests..."
     @uv run pytest tests/e2e
     @echo "🧹 Cleaning up e2e test image..."
-    -@docker rmi fapi-tmpl-e2e:latest 2>/dev/null || true
+    -@docker rmi cymatics-e2e:latest 2>/dev/null || true
 
 # ==============================================================================
 # CLEANUP

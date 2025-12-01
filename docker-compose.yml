@@ -1,8 +1,21 @@
 services:
-  app:
+  cymatics:
     build:
+      context: .
       target: production
+    platform: linux/arm64
+    environment:
+      - OMP_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - XDG_CACHE_HOME=/app/cache
+      - DATA_DIR=/app/data
+    volumes:
+      # Mount visible directory in Home for data persistence
+      - ${HOME}/cymatics:/app/data
+      # Cache mapping to avoid redownloading models
+      - ${HOME}/cymatics/cache:/app/cache
     ports:
-      - "${FAPI_TMPL_BIND_IP:-0.0.0.0}:${FAPI_TMPL_BIND_PORT:-8000}:8000"
+      - "${CYMATICS_BIND_IP:-0.0.0.0}:${CYMATICS_BIND_PORT:-8000}:8000"
     env_file:
       - .env
+    restart: unless-stopped

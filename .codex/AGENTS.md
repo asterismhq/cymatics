@@ -1,28 +1,59 @@
-# fapi-tmpl Agent Notes
+# cymatics Agent Notes
 
 ## Overview
-- Minimal FastAPI template intended as a clean starting point for new services.
-- Ships only the essentials: modern dependency injection using FastAPI's `Depends`, protocols for interfaces, factory pattern for services, health and greeting routes, and test/CI/Docker wiring.
+- Audio/video transcription service using OpenAI Whisper with CPU-optimized inference
+- Designed for Mac ARM64 (Apple Silicon) deployment
+- Single container monolith with filesystem-based state management
+- Lazy loading model to minimize memory usage when idle
 
 ## Design Philosophy
-- Stay database-agnostic; add persistence only when the target project needs it.
-- Use FastAPI-native dependency injection (`Depends`) with protocols for service interfaces and factory pattern for implementations to maximize extensibility, maintainability, and testability.
-- Keep settings and dependencies explicit via `AppSettings` and dependency providers.
-- Maintain parity between local, Docker, and CI flows with a single source of truth (`just`, `uv`, `.env`).
+- CPU-first strategy for stability on Apple Silicon (no MPS/GPU dependencies)
+- FileSystem as database: State managed via host-mounted directories
+- Fire-and-forget: Callers don't wait for processing completion
+- Atomic operations: Each file gets a complete output or error
 
-## First Steps When Creating a Real API
-1. Clone or copy the template and run `just setup` to install dependencies.
-2. Rename the Python package from `fapi_tmpl` if you need a project-specific namespace.
-3. Extend `src/fapi_tmpl/api/router.py` with domain routes and register required dependencies in `dependencies.py`.
-4. Update `.env.example` and documentation to reflect new environment variables or external services.
+## Core Components
+
+### TransmutationService
+- Wraps OpenAI Whisper for audio-to-text conversion
+- Model state machine: UNLOADED → LOADING → READY
+- Auto-unloads after idle timeout (default 5 minutes)
+- Uses `device="cpu"`, `fp16=False` for stability
+- Single concurrency via asyncio Semaphore
+
+### CycleSchedulerService
+- APScheduler-based directory monitoring
+- Polls `incoming/` directory for new files
+- Debouncing: Waits for file write completion
+- Crash recovery: Orphaned files in `processing/` are rolled back on startup
+- File lifecycle: incoming → processing → completed/failed
+
+### API Layer
+- `POST /v1/transcribe`: Upload file, returns 202 with job ID
+- `GET /v1/cycle/status`: Queue length, current task, model state
+- `GET /health`: Health check
+
+## Data Directory Structure
+```
+~/cymatics/
+├── incoming/    # Drop files here
+├── processing/  # System lock directory
+├── completed/   # Output: original + .json + .txt
+└── failed/      # Error logs
+```
 
 ## Key Files
-- `src/fapi_tmpl/dependencies.py`: central place to wire settings and service providers.
-- `src/fapi_tmpl/api/main.py`: FastAPI app instantiation; attach new routers here.
-- `src/fapi_tmpl/protocols/`: protocol definitions for service interfaces.
-- `src/fapi_tmpl/services/`: concrete service implementations.
-- `tests/`: unit/intg/e2e layout kept light so additional checks can drop in without restructuring.
+- `src/cymatics/services/transmutation_service.py`: Whisper integration
+- `src/cymatics/services/cycle_scheduler.py`: Directory watcher
+- `src/cymatics/api/router.py`: HTTP endpoints
+- `src/cymatics/config/app_settings.py`: Environment configuration
 
-## Tooling Snapshot
-- `justfile`: run/lint/test/build tasks used locally and in CI.
-- `uv.lock` + `pyproject.toml`: reproducible dependency graph; regenerate with `uv pip compile` when deps change.
+## Tooling
+- `just init`: Create `~/cymatics` directory structure
+- `just setup`: Install dependencies with uv
+- `just dev`: Run local development server
+- `just test`: Run full test suite
+
+## Supported Formats
+- Audio: `.mp3`, `.wav`, `.m4a`, `.flac`, `.aac`
+- Video: `.mp4`, `.mkv`, `.mov` (audio track extracted)

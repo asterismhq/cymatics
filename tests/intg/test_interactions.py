@@ -1,45 +1,104 @@
-"""Integration tests for component interactions."""
+"""Integration tests for cymatics component interactions."""
+
+import io
+import tempfile
+from pathlib import Path
 
 import pytest
 from httpx import AsyncClient
 
-from fapi_tmpl.api.dependencies import get_app_settings
+from cymatics.api.dependencies import reset_services
 
 
 @pytest.fixture(autouse=True)
-def clear_settings_cache():
-    """Clear the settings cache before and after each test."""
-    get_app_settings.cache_clear()
+def clear_services():
+    """Clear services before and after each test."""
+    reset_services()
     yield
-    get_app_settings.cache_clear()
+    reset_services()
 
 
-class TestIntegration:
-    """Integration tests for component interactions."""
-
-    @pytest.mark.asyncio
-    async def test_greeting_service_integration_with_real_service(
-        self, monkeypatch, async_client: AsyncClient
-    ):
-        """Test that the greeting service integrates correctly with the real implementation."""
-        monkeypatch.delenv("FAPI_TMPL_USE_MOCK_GREETING", raising=False)
-
-        response = await async_client.get("/hello/Alice")
-
-        assert response.status_code == 200
-        assert response.json() == {"message": "Hello, Alice"}
+class TestTranscribeIntegration:
+    """Integration tests for transcription flow."""
 
     @pytest.mark.asyncio
-    async def test_greeting_service_integration_with_mock_service(
+    async def test_transcribe_endpoint_accepts_file(
         self, monkeypatch, async_client: AsyncClient
     ):
-        """Test that the greeting service integrates correctly with the mock implementation."""
-        monkeypatch.setenv("FAPI_TMPL_USE_MOCK_GREETING", "true")
+        """Test that the transcribe endpoint accepts file uploads."""
+        # Use mock transmutation to avoid loading real Whisper
+        monkeypatch.setenv("CYMATICS_USE_MOCK_TRANSMUTATION", "true")
 
-        response = await async_client.get("/hello/World")
+        # Create a temporary directory for testing
+        with tempfile.TemporaryDirectory() as tmpdir:
+            monkeypatch.setenv("DATA_DIR", tmpdir)
+            Path(tmpdir, "incoming").mkdir()
+            Path(tmpdir, "processing").mkdir()
+            Path(tmpdir, "completed").mkdir()
+            Path(tmpdir, "failed").mkdir()
 
-        assert response.status_code == 200
-        assert response.json() == {"message": "[mock] Hello, World"}
+            reset_services()
+
+            # Create a fake audio file
+            audio_content = b"\xff\xfb\x90\x00" + b"\x00" * 1000
+            files = {
+                "file": ("test_audio.mp3", io.BytesIO(audio_content), "audio/mpeg")
+            }
+
+            response = await async_client.post("/v1/transcribe", files=files)
+
+            assert response.status_code == 202
+            data = response.json()
+            assert "id" in data
+            assert data["status"] == "queued"
+
+    @pytest.mark.asyncio
+    async def test_transcribe_endpoint_rejects_unsupported_format(
+        self, monkeypatch, async_client: AsyncClient
+    ):
+        """Test that unsupported file formats are rejected."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            monkeypatch.setenv("DATA_DIR", tmpdir)
+            Path(tmpdir, "incoming").mkdir()
+
+            reset_services()
+
+            # Create a fake file with unsupported extension
+            files = {
+                "file": ("document.pdf", io.BytesIO(b"pdf content"), "application/pdf")
+            }
+
+            response = await async_client.post("/v1/transcribe", files=files)
+
+            assert response.status_code == 400
+            assert "Unsupported file type" in response.json()["detail"]
+
+
+class TestCycleStatusIntegration:
+    """Integration tests for cycle status endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_cycle_status_returns_queue_info(
+        self, monkeypatch, async_client: AsyncClient
+    ):
+        """Test that cycle status returns queue information."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            monkeypatch.setenv("DATA_DIR", tmpdir)
+            monkeypatch.setenv("CYMATICS_USE_MOCK_TRANSMUTATION", "true")
+            Path(tmpdir, "incoming").mkdir()
+            Path(tmpdir, "processing").mkdir()
+            Path(tmpdir, "completed").mkdir()
+            Path(tmpdir, "failed").mkdir()
+
+            reset_services()
+
+            response = await async_client.get("/v1/cycle/status")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "queue_length" in data
+            assert "model_state" in data
+            assert "recent_completed" in data
 
     @pytest.mark.asyncio
     async def test_health_check_integration(self, async_client: AsyncClient):
