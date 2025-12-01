@@ -1,0 +1,20 @@
+name: CI Workflows
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  run-linters:
+    uses: ./.github/workflows/run-linters.yml
+
+  run-local-tests:
+    uses: ./.github/workflows/run-local-tests.yml
+    secrets: inherit
+
+  run-docker-tests:
+    uses: ./.github/workflows/run-docker-tests.yml
+    secrets: inherit
