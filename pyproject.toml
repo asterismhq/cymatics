@@ -33,8 +33,21 @@ build-backend = "hatchling.build"
 packages = ["src/cymatics"]
 
 # uv configuration: Force PyTorch to use CPU-only wheels
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+
+# Override torch dependency from openai-whisper to use CPU version
 [tool.uv]
-extra-index-url = ["https://download.pytorch.org/whl/cpu"]
+override-dependencies = [
+    "torch>=2.0",
+    "torchaudio>=2.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
