@@ -1,15 +1,23 @@
 # syntax=docker/dockerfile:1.7-labs
 # ==============================================================================
-# Multi-stage Dockerfile for FastAPI application
+# Dockerfile for cymatics - Audio/Video Transcription Service
+# Optimized for ARM64 (Apple Silicon) with CPU-only PyTorch
 # ==============================================================================
 
 # ==============================================================================
 # Stage: base
-# - Python base image with uv and dependency files
+# - Python base image with system dependencies and uv
 # ==============================================================================
 FROM python:3.12-slim AS base
 
 WORKDIR /app
+
+# System dependencies: ffmpeg for audio processing, git for whisper install
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN pip install uv
 
@@ -24,7 +32,10 @@ FROM base AS dev-deps
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-RUN --mount=type=cache,target=/root/.cache uv sync
+# Install CPU-only PyTorch first for ARM64 compatibility
+RUN --mount=type=cache,target=/root/.cache \
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    uv sync
 
 
 # ==============================================================================
@@ -33,7 +44,10 @@ RUN --mount=type=cache,target=/root/.cache uv sync
 # ==============================================================================
 FROM base AS prod-deps
 
-RUN --mount=type=cache,target=/root/.cache uv sync --no-dev
+# Install CPU-only PyTorch first for ARM64 compatibility
+RUN --mount=type=cache,target=/root/.cache \
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    uv sync --no-dev
 
 
 # ==============================================================================
@@ -42,14 +56,30 @@ RUN --mount=type=cache,target=/root/.cache uv sync --no-dev
 # ==============================================================================
 FROM python:3.12-slim AS runtime-base
 
+# System dependencies needed at runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN groupadd -r appgroup && useradd -r -g appgroup -d /home/appuser -m appuser
 
 WORKDIR /app
 RUN chown appuser:appgroup /app
 
+# Create data directories
+RUN mkdir -p /app/data/incoming /app/data/processing /app/data/completed /app/data/failed /app/cache && \
+    chown -R appuser:appgroup /app/data /app/cache
+
 ENV PATH="/app/.venv/bin:${PATH}"
 ENV PYTHONPATH="/app/src"
+
+# CPU optimization for PyTorch
+ENV OMP_NUM_THREADS=4
+ENV MKL_NUM_THREADS=4
+ENV XDG_CACHE_HOME=/app/cache
+ENV DATA_DIR=/app/data
+
 EXPOSE 8000
 
 

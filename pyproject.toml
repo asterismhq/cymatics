@@ -1,13 +1,17 @@
 [project]
-name = "fapi-tmpl"
+name = "cymatics"
 version = "0.1.0"
-description = "A database-independent FastAPI project template."
-requires-python = ">=3.9"
+description = "Audio/video transcription service using OpenAI Whisper with CPU-optimized inference."
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv==1.0.1",
     "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.9",
+    "apscheduler>=3.10.0",
+    "openai-whisper>=20240930",
+    "aiofiles>=24.1.0",
 ]
 
 [dependency-groups]
@@ -26,7 +30,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/fapi_tmpl"]
+packages = ["src/cymatics"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -36,6 +40,7 @@ pythonpath = ["."]
 addopts = "-v -s --tb=short"
 filterwarnings = [
     "ignore::DeprecationWarning:testcontainers",
+    "ignore::DeprecationWarning:whisper",
 ]
 
 [tool.ruff]
@@ -55,7 +60,8 @@ exclude = [
     "*/lib/**",
     "*/share/**",
     "*/etc/**",
-    "*/pyvenv.cfg"
+    "*/pyvenv.cfg",
+    "reference",
 ]
 
 [tool.ruff.lint]
@@ -67,4 +73,4 @@ python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
-exclude = ["tests/"]
+exclude = ["tests/", "reference/"]
