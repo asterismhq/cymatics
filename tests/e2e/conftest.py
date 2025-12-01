@@ -16,7 +16,7 @@ def e2e_network():
 @pytest.fixture(scope="session")
 def api_image():
     # Use the temporary image built for e2e tests
-    return "cymatics:latest"
+    return "cymatics-e2e:latest"
 
 
 @pytest.fixture(scope="session")
