@@ -8,7 +8,7 @@
 # Stage: base
 # - Python base image with system dependencies and uv
 # ==============================================================================
-FROM python:3.12-slim AS base
+FROM --platform=linux/arm64 python:3.12-slim AS base
 
 WORKDIR /app
 
@@ -32,10 +32,11 @@ FROM base AS dev-deps
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Install CPU-only PyTorch first for ARM64 compatibility
-# Use --extra-index-url to prefer CPU wheels over CUDA versions
+# For ARM64, PyTorch CPU wheels are installed directly without CUDA
+# Set link mode to copy to avoid hardlink issues in Docker
+ENV UV_LINK_MODE=copy
 RUN --mount=type=cache,target=/root/.cache \
-    pip install --no-cache-dir torch torchaudio --extra-index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install --system torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
     uv sync
 
 
@@ -45,10 +46,10 @@ RUN --mount=type=cache,target=/root/.cache \
 # ==============================================================================
 FROM base AS prod-deps
 
-# Install CPU-only PyTorch first for ARM64 compatibility
-# Use --extra-index-url to prefer CPU wheels over CUDA versions
+# For ARM64, PyTorch CPU wheels are installed directly without CUDA
+ENV UV_LINK_MODE=copy
 RUN --mount=type=cache,target=/root/.cache \
-    pip install --no-cache-dir torch torchaudio --extra-index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install --system torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
     uv sync --no-dev
 
 
@@ -56,7 +57,7 @@ RUN --mount=type=cache,target=/root/.cache \
 # Stage: runtime-base
 # - Common runtime setup for development and production
 # ==============================================================================
-FROM python:3.12-slim AS runtime-base
+FROM --platform=linux/arm64 python:3.12-slim AS runtime-base
 
 # System dependencies needed at runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
